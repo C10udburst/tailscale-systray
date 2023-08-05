@@ -45,10 +45,10 @@ func onError(err error) {
 	beeep.Notify("Tailscale", err.Error(), "")
 }
 
-// reloadDaemon reloads the systray menu every 30 seconds
+// reloadDaemon reloads the systray menu every minute to keep it up to date
 func reloadDaemon() {
 	for {
-		time.Sleep(30 * time.Second)
+		time.Sleep(time.Minute)
 		reload()
 	}
 }
@@ -140,11 +140,16 @@ func setExitNodes(root *systray.MenuItem, status *ipnstate.Status, prefs *ipn.Pr
 		}
 		name := PeerName(node, status)
 		item := root.AddSubMenuItemCheckbox(name, name, node.ExitNode)
-		setListener(item, func(data interface{}) {
-			node := data.(*ipnstate.PeerStatus)
-			setExitNode(node.ID)
-			reload()
-		}, node)
+		if node.Online {
+			setListener(item, func(data interface{}) {
+				node := data.(*ipnstate.PeerStatus)
+				setExitNode(node.ID)
+				reload()
+			}, node)
+		} else {
+			item.Disable()
+		}
+
 	}
 }
 
@@ -233,6 +238,11 @@ func setDeviceList(root *systray.MenuItem, status *ipnstate.Status) {
 		}
 		name := PeerName(device, status)
 		item := root.AddSubMenuItem(name, name)
+		if !device.Online {
+			item.SetIcon(iconOff)
+		} else {
+			item.SetIcon(iconOn)
+		}
 		setListener(item, func(ip interface{}) {
 			ip = ip.(string)
 			OpenUrl(fmt.Sprintf("https://login.tailscale.com/admin/machines/%s", ip))
