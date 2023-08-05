@@ -1,21 +1,18 @@
 package main
 
 import (
-	"fmt"
-	"sync"
-
+	"context"
 	_ "embed"
+	"fmt"
+	"time"
 
-	"github.com/atotto/clipboard"
-	"github.com/c10udburst/tailscale-systray/options"
-	"github.com/c10udburst/tailscale-systray/tailscale"
+	"fyne.io/systray"
 	"github.com/gen2brain/beeep"
-	"github.com/getlantern/systray"
+	"tailscale.com/client/tailscale"
+	"tailscale.com/ipn"
+	"tailscale.com/ipn/ipnstate"
+	"tailscale.com/paths"
 )
-
-func main() {
-	systray.Run(onReady, nil)
-}
 
 var (
 	//go:embed icons/on.png
@@ -24,218 +21,40 @@ var (
 	iconOff []byte
 )
 
-var mu = &sync.Mutex{}
+var localClient tailscale.LocalClient
+var ctx context.Context
 
-func onReady() {
-	mu.Lock()
-	systray.SetIcon(iconOff)
-	systray.SetTitle("Tailscale")
-	systray.SetTooltip("Tailscale")
+func main() {
+	localClient = tailscale.LocalClient{}
 
-	options, err := options.ReadOptions()
-	if err != nil {
-		onErr(err)
-	}
+	localClient.Socket = paths.DefaultTailscaledSocket()
+	localClient.UseSocketOnly = true
 
-	status, err := tailscale.GetStatus()
-	if err != nil {
-		onErr(err)
-	}
+	ctx = context.Background()
 
-	connect := systray.AddMenuItem("Connect", "Connect to Tailscale")
-	disconnect := systray.AddMenuItem("Disconnect", "Disconnect from Tailscale")
-	systray.AddSeparator()
-
-	setListener(connect, func(interface{}) {
-		tailscaleUp()
-		connect.Disable()
-		disconnect.Enable()
-		systray.SetIcon(iconOn)
-	}, "")
-
-	setListener(disconnect, func(interface{}) {
-		if err := tailscale.Down(); err != nil {
-			onErr(err)
-		} else {
-			beeep.Notify("Tailscale", "Disconnected from Tailscale", "")
-			connect.Enable()
-			disconnect.Disable()
-			systray.SetIcon(iconOff)
-		}
-	}, "")
-
-	if status.Running {
-		systray.SetIcon(iconOn)
-		connect.Disable()
-	} else {
-		disconnect.Disable()
-		systray.SetIcon(iconOff)
-	}
-
-	exitNode := systray.AddMenuItem("Exit Node", "Exit Node")
-	setExitNode(exitNode, options, &status)
-
-	systray.AddSeparator()
-
-	adminConsole := systray.AddMenuItem("Admin Console", "Admin Console")
-	setListener(adminConsole, func(interface{}) {
-		OpenUrl("https://login.tailscale.com/admin/machines")
-	}, "")
-
-	preferences := systray.AddMenuItem("Preferences", "Preferences")
-	setPreferences(preferences, options)
-
-	devices := systray.AddMenuItem("Devices", "Devices")
-	setDeviceList(devices, &status)
-
-	mu.Unlock()
+	go reloadDaemon()
+	systray.Run(onReady, onSystrayError)
 }
 
-func setExitNode(root *systray.MenuItem, options *options.Options, status *tailscale.Status) {
-	noneExitNode := root.AddSubMenuItemCheckbox("None", "None", false)
-	var runningExitNode *systray.MenuItem = noneExitNode
-	for _, peer := range status.Peers {
-		if !peer.ExitNodeOption {
-			continue
-		}
-		peerNode := root.AddSubMenuItemCheckbox(peer.Name, peer.Name, peer.ExitNode)
-		setListener(peerNode, func(data interface{}) {
-			entry := data.(struct {
-				item *systray.MenuItem
-				name string
-			})
-			options.ExitNode = entry.name
-			if err := options.Write(); err != nil {
-				onErr(err)
-			}
-			tailscaleUpdate()
-			runningExitNode.Uncheck()
-			runningExitNode = entry.item
-			runningExitNode.Check()
-		}, struct {
-			item *systray.MenuItem
-			name string
-		}{
-			item: peerNode,
-			name: peer.Name,
-		})
-	}
-
-	runningExitNode.Check()
-
-	setListener(noneExitNode, func(interface{}) {
-		options.ExitNode = ""
-		if err := options.Write(); err != nil {
-			onErr(err)
-		}
-		tailscaleUpdate()
-		runningExitNode.Uncheck()
-		runningExitNode = noneExitNode
-		runningExitNode.Check()
-	}, "")
+func reload() {
+	systray.ResetMenu()
+	onReady()
 }
 
-func setPreferences(root *systray.MenuItem, options *options.Options) {
-	allowIncoming := root.AddSubMenuItemCheckbox("Allow Incoming", "Allow Incoming", options.AllowIncoming)
-	setListener(allowIncoming, func(interface{}) {
-		options.AllowIncoming = !options.AllowIncoming
-		if err := options.Write(); err != nil {
-			onErr(err)
-		}
-		tailscaleUpdate()
-	}, "")
-
-	acceptRoutes := root.AddSubMenuItemCheckbox("Accept Routes", "Accept Routes", options.AcceptRoutes)
-	setListener(acceptRoutes, func(interface{}) {
-		options.AcceptRoutes = !options.AcceptRoutes
-		if err := options.Write(); err != nil {
-			onErr(err)
-		}
-		tailscaleUpdate()
-	}, "")
-
-	acceptDns := root.AddSubMenuItemCheckbox("Accept DNS", "Accept DNS", options.AcceptDns)
-	setListener(acceptDns, func(interface{}) {
-		options.AcceptDns = !options.AcceptDns
-		if err := options.Write(); err != nil {
-			onErr(err)
-		}
-		tailscaleUpdate()
-	}, "")
-
-	exitNodeAllowLan := root.AddSubMenuItemCheckbox("Exit Node Allow Lan", "Exit Node Allow Lan", options.ExitNodeAllowLan)
-	setListener(exitNodeAllowLan, func(interface{}) {
-		options.ExitNodeAllowLan = !options.ExitNodeAllowLan
-		if err := options.Write(); err != nil {
-			onErr(err)
-		}
-		if options.ExitNode != "" {
-			tailscaleUpdate()
-		}
-	}, "")
-
-	runExitNode := root.AddSubMenuItemCheckbox("Run Exit Node", "Run Exit Node", options.RunExitNode)
-	setListener(runExitNode, func(interface{}) {
-		options.RunExitNode = !options.RunExitNode
-		if err := options.Write(); err != nil {
-			onErr(err)
-		}
-		tailscaleUpdate()
-	}, "")
+func onError(err error) {
+	beeep.Notify("Tailscale", err.Error(), "")
 }
 
-func setDeviceList(root *systray.MenuItem, status *tailscale.Status) {
-	for _, peer := range status.Peers {
-		if peer.Name == "" {
-			continue
-		}
-		item := root.AddSubMenuItem(peer.Name, peer.Name)
-		if peer.Online {
-			item.SetIcon(iconOn)
-		} else {
-			item.SetIcon(iconOff)
-		}
-		setListener(item, func(p interface{}) {
-			pr := p.(tailscale.Peer)
-			if len(pr.TailscaleIPs) > 0 {
-				clipboard.WriteAll(pr.TailscaleIPs[0])
-			} else {
-				clipboard.WriteAll(pr.DNSName)
-			}
-			beeep.Notify(pr.Name, fmt.Sprintf("%s\n%+v\nOnline: %t", pr.DNSName, pr.TailscaleIPs, pr.Online), "")
-		}, peer)
+// reloadDaemon reloads the systray menu every 30 seconds
+func reloadDaemon() {
+	for {
+		time.Sleep(30 * time.Second)
+		reload()
 	}
 }
 
-func tailscaleUpdate() {
-	status, err := tailscale.GetStatus()
-	if err != nil {
-		onErr(err)
-	}
-
-	if !status.Running {
-		return
-	}
-
-	tailscaleUp()
-}
-
-func tailscaleUp() {
-
-	options, err := options.ReadOptions()
-	if err != nil {
-		onErr(err)
-	}
-
-	if err := tailscale.Up(options); err != nil {
-		onErr(err)
-	} else {
-		beeep.Notify("Tailscale", "Connected to Tailscale", "")
-	}
-}
-
-func onErr(err error) {
-	beeep.Notify("Tailscale Error", err.Error(), "")
+func onSystrayError() {
+	onError(fmt.Errorf("an error with systray occurred"))
 }
 
 func setListener(item *systray.MenuItem, listener func(interface{}), data interface{}) {
@@ -247,4 +66,176 @@ func setListener(item *systray.MenuItem, listener func(interface{}), data interf
 			listener(data)
 		}
 	}()
+}
+
+func onReady() {
+	systray.SetTitle("Tailscale")
+	systray.SetTooltip("Tailscale")
+
+	status, err := localClient.Status(ctx)
+	if err != nil {
+		onError(err)
+		return
+	}
+
+	prefs, err := localClient.GetPrefs(ctx)
+	if err != nil {
+		onError(err)
+		return
+	}
+
+	refresh := systray.AddMenuItem("Refresh", "Refresh this menu")
+	setListener(refresh, func(interface{}) {
+		reload()
+	}, nil)
+
+	systray.AddSeparator()
+
+	connect := systray.AddMenuItem("Connect", "Connect to Tailscale")
+	disconnect := systray.AddMenuItem("Disconnect", "Disconnect from Tailscale")
+	systray.AddSeparator()
+
+	if status.BackendState == "Running" {
+		systray.SetIcon(iconOn)
+		connect.Disable()
+		setListener(disconnect, func(interface{}) {
+			tailscaleDown()
+		}, nil)
+	} else {
+		disconnect.Disable()
+		systray.SetIcon(iconOff)
+		setListener(connect, func(interface{}) {
+			tailscaleUp()
+		}, nil)
+	}
+
+	exitNode := systray.AddMenuItem("Exit Node", "Exit Node")
+	if status.BackendState != "Running" {
+		exitNode.Disable()
+	}
+	setExitNodes(exitNode, status, prefs)
+
+	preferences := systray.AddMenuItem("Preferences", "Preferences")
+	setPreferences(preferences, prefs)
+
+	adminConsole := systray.AddMenuItem("Admin Console", "Admin Console")
+	setListener(adminConsole, func(interface{}) {
+		OpenUrl(prefs.ControlURL)
+	}, nil)
+
+	deviceList := systray.AddMenuItem("Device List", "Device List")
+	setDeviceList(deviceList, status)
+}
+
+func setExitNodes(root *systray.MenuItem, status *ipnstate.Status, prefs *ipn.Prefs) {
+	noneItem := root.AddSubMenuItemCheckbox("None", "None", prefs.ExitNodeID.IsZero())
+
+	setListener(noneItem, func(interface{}) {
+		setExitNode("")
+	}, nil)
+
+	for _, node := range status.Peer {
+		if !node.ExitNodeOption {
+			continue
+		}
+		name := PeerName(node, status)
+		item := root.AddSubMenuItemCheckbox(name, name, node.ExitNode)
+		setListener(item, func(data interface{}) {
+			node := data.(*ipnstate.PeerStatus)
+			setExitNode(node.ID)
+			reload()
+		}, node)
+	}
+}
+
+func setPreferences(root *systray.MenuItem, prefs *ipn.Prefs) {
+	allowIncoming := root.AddSubMenuItemCheckbox("Allow Incoming", "Allow Incoming", !prefs.ShieldsUp)
+	setListener(allowIncoming, func(interface{}) {
+		_, err := localClient.EditPrefs(ctx, &ipn.MaskedPrefs{
+			Prefs: ipn.Prefs{
+				ShieldsUp: !prefs.ShieldsUp,
+			},
+			ShieldsUpSet: true,
+		})
+		if err != nil {
+			onError(err)
+		}
+		beeep.Notify("Tailscale", "Updated settings", "")
+		reload()
+	}, "")
+
+	acceptRoutes := root.AddSubMenuItemCheckbox("Accept Routes", "Accept Routes", prefs.RouteAll)
+	setListener(acceptRoutes, func(interface{}) {
+		_, err := localClient.EditPrefs(ctx, &ipn.MaskedPrefs{
+			Prefs: ipn.Prefs{
+				RouteAll: !prefs.RouteAll,
+			},
+			RouteAllSet: true,
+		})
+		if err != nil {
+			onError(err)
+		}
+		beeep.Notify("Tailscale", "Updated settings", "")
+		reload()
+	}, "")
+
+	acceptDns := root.AddSubMenuItemCheckbox("Accept DNS", "Accept DNS", prefs.CorpDNS)
+	setListener(acceptDns, func(interface{}) {
+		_, err := localClient.EditPrefs(ctx, &ipn.MaskedPrefs{
+			Prefs: ipn.Prefs{
+				CorpDNS: !prefs.CorpDNS,
+			},
+			CorpDNSSet: true,
+		})
+		if err != nil {
+			onError(err)
+		}
+		beeep.Notify("Tailscale", "Updated settings", "")
+		reload()
+	}, "")
+
+	exitNodeAllowLan := root.AddSubMenuItemCheckbox("Exit Node Allow Lan", "Exit Node Allow Lan", prefs.ExitNodeAllowLANAccess)
+	setListener(exitNodeAllowLan, func(interface{}) {
+		_, err := localClient.EditPrefs(ctx, &ipn.MaskedPrefs{
+			Prefs: ipn.Prefs{
+				ExitNodeAllowLANAccess: !prefs.ExitNodeAllowLANAccess,
+			},
+			ExitNodeAllowLANAccessSet: true,
+		})
+		if err != nil {
+			onError(err)
+		}
+		beeep.Notify("Tailscale", "Updated settings", "")
+		reload()
+	}, "")
+
+	runExitNode := root.AddSubMenuItemCheckbox("Run Exit Node", "Run Exit Node", prefs.AdvertisesExitNode())
+	setListener(runExitNode, func(interface{}) {
+		copy := prefs.Clone()
+		copy.SetAdvertiseExitNode(!prefs.AdvertisesExitNode())
+		_, err := localClient.EditPrefs(ctx, &ipn.MaskedPrefs{
+			Prefs:              *copy,
+			AdvertiseRoutesSet: true,
+		})
+		if err != nil {
+			onError(err)
+		}
+		beeep.Notify("Tailscale", "Updated settings", "")
+		reload()
+	}, "")
+}
+
+func setDeviceList(root *systray.MenuItem, status *ipnstate.Status) {
+	for _, device := range status.Peer {
+		var ip string
+		if len(device.TailscaleIPs) > 0 {
+			ip = device.TailscaleIPs[0].String()
+		}
+		name := PeerName(device, status)
+		item := root.AddSubMenuItem(name, name)
+		setListener(item, func(ip interface{}) {
+			ip = ip.(string)
+			OpenUrl(fmt.Sprintf("https://login.tailscale.com/admin/machines/%s", ip))
+		}, ip)
+	}
 }

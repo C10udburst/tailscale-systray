@@ -5,6 +5,9 @@ import (
 	"log"
 	"os/exec"
 	"runtime"
+
+	"tailscale.com/ipn/ipnstate"
+	"tailscale.com/util/dnsname"
 )
 
 func OpenUrl(url string) {
@@ -22,4 +25,12 @@ func OpenUrl(url string) {
 	if err != nil {
 		log.Printf("could not open link: %v", err)
 	}
+}
+
+func PeerName(peer *ipnstate.PeerStatus, status *ipnstate.Status) string {
+	name := dnsname.TrimSuffix(peer.DNSName, status.CurrentTailnet.MagicDNSSuffix)
+	if name == "" {
+		return peer.HostName
+	}
+	return dnsname.SanitizeHostname(name)
 }
