@@ -57,6 +57,7 @@ Remove the application from the `shell:startup` folder.
 ### macOS
 ```bash
 rm ~/.local/bin/tailscale-systray
+rm ~/Library/LaunchAgents/com.tailscale.tailscale-systray.plist
 ```
 
 ### Linux
@@ -64,9 +65,6 @@ rm ~/.local/bin/tailscale-systray
 rm ~/.local/bin/tailscale-systray
 rm ~/.config/autostart/tailscale-systray.desktop
 ```
-
-
-<sub>(The install script is a polyglot script :sunglasses:)</sub>
 
 <sub>This application is an unofficial project and is not associated with the official Tailscale project. Use it at your own risk, and the developers are not liable for any potential issues or damages caused by the usage of this application.</sub>
 
