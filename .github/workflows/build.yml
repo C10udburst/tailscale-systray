@@ -25,12 +25,15 @@ jobs:
           - runs-on: ubuntu-latest
             goos: linux
             ext: ""
+            flags: ""
           - runs-on: windows-latest
             goos: windows
             ext: ".exe"
+            flags: "-ldflags -H=windowsgui"
           - runs-on: macos-latest
             goos: darwin
             ext: ""
+            flags: ""
         arch:
           - goarch: amd64
             skip-if-os: ""
@@ -48,7 +51,7 @@ jobs:
           go-version: '1.20'
       - name: Build
         if: ${{ matrix.os.goos != matrix.arch.skip-if-os }}
-        run: env GOOS=${{ matrix.os.goos }} GOARCH=${{ matrix.arch.goarch }} go build -o tailscale-systray-${{ matrix.os.goos }}-${{ matrix.arch.goarch }}${{ matrix.os.ext }}
+        run: env GOOS=${{ matrix.os.goos }} GOARCH=${{ matrix.arch.goarch }} go build ${{ matrix.os.flags }} -o tailscale-systray-${{ matrix.os.goos }}-${{ matrix.arch.goarch }}${{ matrix.os.ext }}
       - uses: softprops/action-gh-release@v1
         with:
           tag_name: latest

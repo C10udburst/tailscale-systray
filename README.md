@@ -21,19 +21,50 @@ This is an unofficial cross-platform system tray application written in Golang f
 ## Installation
 
 ### Windows
+
+In PowerShell, run the following command:
+
 ```powershell
 iwr -useb https://raw.githubusercontent.com/C10udburst/tailscale-systray/master/install.txt | iex
 ```
 
 ### macOS
+
+In Terminal, run the following command:
+
 ```bash
 curl -fsSL https://raw.githubusercontent.com/C10udburst/tailscale-systray/master/install.txt | sh
 ```
 
 ### Linux
+
+In Terminal, run the following command:
+
 ```bash
 curl -fsSL https://raw.githubusercontent.com/C10udburst/tailscale-systray/master/install.txt | sh
 ```
+
+## Update
+
+Just run the installation command again to update the application.
+
+## Uninstall
+
+### Windows
+
+Remove the application from the `shell:startup` folder.
+
+### macOS
+```bash
+rm ~/.local/bin/tailscale-systray
+```
+
+### Linux
+```bash
+rm ~/.local/bin/tailscale-systray
+rm ~/.config/autostart/tailscale-systray.desktop
+```
+
 
 <sub>(The install script is a polyglot script :sunglasses:)</sub>
 
