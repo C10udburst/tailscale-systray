@@ -45,20 +45,11 @@ func onError(err error) {
 	beeep.Notify("Tailscale", err.Error(), "")
 }
 
-// reloadDaemon reloads the systray icon every 5 seconds
+// reloadDaemon reloads the systray every 15 seconds
 func reloadDaemon() {
 	for {
-		time.Sleep(5 * time.Second)
-		status, err := localClient.StatusWithoutPeers(ctx)
-		if err != nil {
-			onError(err)
-		} else {
-			if status.BackendState == "Running" {
-				systray.SetIcon(iconOn)
-			} else {
-				systray.SetIcon(iconOff)
-			}
-		}
+		time.Sleep(15 * time.Second)
+		reload()
 	}
 }
 
@@ -133,7 +124,7 @@ func onReady() {
 	setExitNodes(exitNode, status, prefs)
 
 	deviceList := systray.AddMenuItem("Device List", "Device List")
-	setDeviceList(deviceList, status)
+	setDeviceList(deviceList, status, prefs)
 
 	systray.AddSeparator()
 
@@ -142,7 +133,7 @@ func onReady() {
 
 	adminConsole := systray.AddMenuItem("Admin Console", "Admin Console")
 	setListener(adminConsole, func(interface{}) {
-		OpenUrl(prefs.ControlURL)
+		OpenUrl(prefs.AdminPageURL())
 	}, nil)
 }
 
@@ -249,7 +240,7 @@ func setPreferences(root *systray.MenuItem, prefs *ipn.Prefs) {
 	}, "")
 }
 
-func setDeviceList(root *systray.MenuItem, status *ipnstate.Status) {
+func setDeviceList(root *systray.MenuItem, status *ipnstate.Status, prefs *ipn.Prefs) {
 	for _, device := range status.Peer {
 		var ip string
 		if len(device.TailscaleIPs) > 0 {
@@ -264,7 +255,7 @@ func setDeviceList(root *systray.MenuItem, status *ipnstate.Status) {
 		}
 		setListener(item, func(ip interface{}) {
 			ip = ip.(string)
-			OpenUrl(fmt.Sprintf("https://login.tailscale.com/admin/machines/%s", ip))
+			OpenUrl(fmt.Sprintf("%s/%s", prefs.AdminPageURL(), ip))
 		}, ip)
 	}
 }
