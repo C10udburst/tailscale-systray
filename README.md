@@ -6,6 +6,8 @@
 
 This is an unofficial cross-platform system tray application written in Golang for managing Tailscale status, exit nodes, and other related functionalities. Tailscale is a secure and easy-to-use VPN that allows you to securely connect your devices across the internet.
 
+![image](https://github.com/C10udburst/tailscale-systray/assets/18114966/adc69050-a320-4e3d-952b-fcf57185c8d4)
+
 </div>
 
 ## Features
