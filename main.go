@@ -45,11 +45,20 @@ func onError(err error) {
 	beeep.Notify("Tailscale", err.Error(), "")
 }
 
-// reloadDaemon reloads the systray menu every minute to keep it up to date
+// reloadDaemon reloads the systray icon every 5 seconds
 func reloadDaemon() {
 	for {
-		time.Sleep(time.Minute)
-		reload()
+		time.Sleep(5 * time.Second)
+		status, err := localClient.StatusWithoutPeers(ctx)
+		if err != nil {
+			onError(err)
+		} else {
+			if status.BackendState == "Running" {
+				systray.SetIcon(iconOn)
+			} else {
+				systray.SetIcon(iconOff)
+			}
+		}
 	}
 }
 
@@ -84,6 +93,9 @@ func onReady() {
 		return
 	}
 
+	statusItem := systray.AddMenuItem(StatusString(status), "Current status of Tailscale")
+	statusItem.Disable()
+
 	refresh := systray.AddMenuItem("Refresh", "Refresh this menu")
 	setListener(refresh, func(interface{}) {
 		reload()
@@ -109,11 +121,21 @@ func onReady() {
 		}, nil)
 	}
 
-	exitNode := systray.AddMenuItem("Exit Node", "Exit Node")
+	var exitNodeFmt = "Exit Node"
+	if !prefs.ExitNodeID.IsZero() {
+		exitNodeFmt = fmt.Sprintf("Exit Node (%s)", prefs.ExitNodeID)
+	}
+
+	exitNode := systray.AddMenuItem(exitNodeFmt, "Exit Node")
 	if status.BackendState != "Running" {
 		exitNode.Disable()
 	}
 	setExitNodes(exitNode, status, prefs)
+
+	deviceList := systray.AddMenuItem("Device List", "Device List")
+	setDeviceList(deviceList, status)
+
+	systray.AddSeparator()
 
 	preferences := systray.AddMenuItem("Preferences", "Preferences")
 	setPreferences(preferences, prefs)
@@ -122,9 +144,6 @@ func onReady() {
 	setListener(adminConsole, func(interface{}) {
 		OpenUrl(prefs.ControlURL)
 	}, nil)
-
-	deviceList := systray.AddMenuItem("Device List", "Device List")
-	setDeviceList(deviceList, status)
 }
 
 func setExitNodes(root *systray.MenuItem, status *ipnstate.Status, prefs *ipn.Prefs) {

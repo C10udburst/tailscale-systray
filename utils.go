@@ -34,3 +34,19 @@ func PeerName(peer *ipnstate.PeerStatus, status *ipnstate.Status) string {
 	}
 	return dnsname.SanitizeHostname(name)
 }
+
+func StatusString(status *ipnstate.Status) string {
+	if status.BackendState != "Running" {
+		return status.BackendState
+	} else {
+		var ip = status.Self.DNSName
+		if len(status.Self.TailscaleIPs) > 0 {
+			ip = status.Self.TailscaleIPs[0].String()
+		}
+		var msg = fmt.Sprintf("Running: %s (%s)", PeerName(status.Self, status), ip)
+		if !status.TUN {
+			msg += " (no tun)"
+		}
+		return msg
+	}
+}
