@@ -30,7 +30,7 @@ if [ $os = "linux" ]; then
     cat > ~/.config/autostart/tailscale-systray.desktop <<EOF
 [Desktop Entry]
 Type=Application
-Exec=tailscale-systray
+Exec=$HOME/.local/bin/tailscale-systray
 Hidden=false
 NoDisplay=false
 X-GNOME-Autostart-enabled=true
