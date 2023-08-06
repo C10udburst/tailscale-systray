@@ -1,8 +1,13 @@
+project_name: tailscale-systray
 builds:
-  goos:
-    - windows
-    - linux
-    - darwin
-  goarch:
-    - amd64
-    - arm64
+  - goos:
+      - windows
+      - linux
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+      - 386
+    ignore:
+      - goos: darwin
+        goarch: 386
