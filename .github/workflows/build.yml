@@ -1,5 +1,8 @@
 name: Build the program
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+
 on:
   push:
     branches: [ master ]

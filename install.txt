@@ -8,9 +8,6 @@ if [ $(id -u) = 0 ]; then
     exit 1
 fi
 
-echo "Killing existing tailscale-systray"
-killall tailscale-systray > /dev/null 2>&1
-
 arch=$(uname -m)
 case $arch in
     x86_64) arch=amd64 ;;
@@ -25,6 +22,9 @@ case $os in
     Darwin*) os=darwin ;;
     *) echo "Unknown OS $os"; exit 1 ;;
 esac
+
+echo "Killing existing tailscale-systray"
+killall tailscale-systray > /dev/null 2>&1
 
 uri="https://github.com/C10udburst/tailscale-systray/releases/download/latest/tailscale-systray-$os-$arch"
 mkdir -p ~/.local/bin
@@ -46,7 +46,7 @@ X-GNOME-Autostart-enabled=true
 Name=Tailscale Systray
 EOF
     nohup ~/.local/bin/tailscale-systray > /dev/null 2>&1 &
-else if [ $os = "darwin" ]; then
+elif [ $os = "darwin" ]; then
     echo "Adding to startup ~/Library/LaunchAgents/com.tailscale.tailscale-systray.plist"
     mkdir -p ~/Library/LaunchAgents
     cat > ~/Library/LaunchAgents/com.tailscale.tailscale-systray.plist <<EOF
