@@ -1,6 +1,9 @@
 project_name: tailscale-systray
 builds:
-  - goos:
+  - env:
+      - CGO_ENABLED=1 # required for systray
+    no_unique_dist_dir: true
+    goos:
       - windows
       - linux
       - darwin
