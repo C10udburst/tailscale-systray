@@ -1,12 +1,10 @@
 project_name: tailscale-systray
 builds:
-  - env:
-      - CGO_ENABLED=1 # required for systray
-    no_unique_dist_dir: true
+  - no_unique_dist_dir: true
     goos:
       - windows
       - linux
-      - darwin
+      # - darwin
     goarch:
       - amd64
       - arm64
@@ -14,3 +12,13 @@ builds:
     ignore:
       - goos: darwin
         goarch: 386
+      - goos: darwin
+        goarch: arm64
+    overrides:
+      - goos: darwin
+        goarch: amd64
+        goamd64: v1
+        goarm: ""
+        gomips: ""
+        env:
+          - CGO_ENABLED=1
