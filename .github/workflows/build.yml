@@ -33,28 +33,8 @@ jobs:
       - name: Build
         if: ${{ matrix.os.goos != matrix.arch.skip-if-os }}
         run: env GOOS=${{ matrix.os.goos }} GOARCH=${{ matrix.arch.goarch }} go build -o tailscale-systray-${{ matrix.os.goos }}-${{ matrix.arch.goarch }}
-      - name: Upload artifact
-        if: ${{ matrix.os.goos != matrix.arch.skip-if-os }}
-        uses: actions/upload-artifact@v2
+      - uses: softprops/action-gh-release@v1
         with:
-          name: tailscale-systray-${{ matrix.os.goos }}-${{ matrix.arch.goarch }}
-          path: tailscale-systray-${{ matrix.os.goos }}-${{ matrix.arch.goarch }}
-
-  collect:
-    runs-on: ubuntu-latest
-    needs: build
-    steps:
-      - uses: actions/checkout@v3
-      - name: Download all matrix artifacts
-        uses: actions/download-artifact@v2
-        with:
-          name: tailscale-systray-*
-      - name: Create release
-        uses: marvinpinto/action-automatic-releases@latest
-        with:
-          repo_token: ${{ secrets.GITHUB_TOKEN }}
-          automatic_release_tag: "latest"
-          prerelease: true
+          tag_name: latest
           files: |
-            tailscale-systray-*
-          title: "Latest development build"
+            tailscale-systray-${{ matrix.os.goos }}-${{ matrix.arch.goarch }}
