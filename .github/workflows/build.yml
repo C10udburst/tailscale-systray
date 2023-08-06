@@ -53,4 +53,4 @@ jobs:
         with:
           tag_name: latest
           files: |
-            tailscale-systray-${{ matrix.os.goos }}-${{ matrix.arch.goarch }}
+            tailscale-systray-${{ matrix.os.goos }}-${{ matrix.arch.goarch }}${{ matrix.os.ext }}
