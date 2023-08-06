@@ -1,0 +1,67 @@
+#!/bin/bash
+echo `# <#`
+
+# Bash goes here
+arch=$(uname -m)
+case $arch in
+    x86_64) arch=amd64 ;;
+    i686) arch=386 ;;
+    aarch64) arch=arm64 ;;
+    *) echo "Unknown architecture $arch"; exit 1 ;;
+esac
+
+os=$(uname -s)
+case $os in
+    Linux*) os=linux ;;
+    Darwin*) os=darwin ;;
+    *) echo "Unknown OS $os"; exit 1 ;;
+esac
+
+uri="https://github.com/C10udburst/tailscale-systray/releases/download/latest/tailscale-systray-$os-$arch"
+mkdir -p ~/.local/bin
+curl -L -o ~/.local/bin/tailscale-systray $uri
+
+chmod +x ~/.local/bin/tailscale-systray
+
+# Add to startup
+if [ $os = "linux" ]; then
+    echo "Adding to startup ~/.config/autostart/tailscale-systray.desktop"
+    mkdir -p ~/.config/autostart
+    cat > ~/.config/autostart/tailscale-systray.desktop <<EOF
+[Desktop Entry]
+Type=Application
+Exec=tailscale-systray
+Hidden=false
+NoDisplay=false
+X-GNOME-Autostart-enabled=true
+Name=Tailscale Systray
+EOF
+fi
+
+# Set operator to current user
+if [ $os = "linux" ]; then
+    echo "Setting tailscale operator to $(whoami)"
+    sudo tailscale set --operator $(whoami)
+fi
+
+exit
+
+#> > $null
+
+# PowerShell goes here
+
+ARCH = $env:PROCESSOR_ARCHITECTURE
+if ($ARCH -eq "AMD64") {
+    $ARCH = "amd64"
+} else if ($ARCH -eq "x86") {
+    $ARCH = "386"
+} else if ($ARCH -eq "ARM64") {
+    $ARCH = "arm64"
+} else {
+    throw "Unknown architecture $ARCH"
+}
+
+uri = "https://github.com/C10udburst/tailscale-systray/releases/download/latest/tailscale-systray-windows-$ARCH.exe"
+shellStartup = [Environment]::GetFolderPath("Startup")
+Invoke-WebRequest -Uri $uri -OutFile "$shellStartup\tailscale-systray.exe"
+

@@ -8,16 +8,29 @@ permissions:
   contents: write
 
 jobs:
+  clean_old:
+    runs-on: ubuntu-latest
+    name: Clean old releases
+    steps:
+      - uses: dev-drprasad/delete-tag-and-release@v1.0
+        with:
+          tag_name: latest
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+
   build:
+    needs: clean_old
     strategy:
       matrix:
         os:
           - runs-on: ubuntu-latest
             goos: linux
+            ext: ""
           - runs-on: windows-latest
             goos: windows
+            ext: ".exe"
           - runs-on: macos-latest
             goos: darwin
+            ext: ""
         arch:
           - goarch: amd64
             skip-if-os: ""
@@ -35,7 +48,7 @@ jobs:
           go-version: '1.20'
       - name: Build
         if: ${{ matrix.os.goos != matrix.arch.skip-if-os }}
-        run: env GOOS=${{ matrix.os.goos }} GOARCH=${{ matrix.arch.goarch }} go build -o tailscale-systray-${{ matrix.os.goos }}-${{ matrix.arch.goarch }}
+        run: env GOOS=${{ matrix.os.goos }} GOARCH=${{ matrix.arch.goarch }} go build -o tailscale-systray-${{ matrix.os.goos }}-${{ matrix.arch.goarch }}${{ matrix.os.ext }}
       - uses: softprops/action-gh-release@v1
         with:
           tag_name: latest
