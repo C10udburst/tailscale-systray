@@ -2,9 +2,12 @@ package main
 
 import (
 	"context"
-	_ "embed"
+	"encoding/json"
 	"fmt"
+	"net/http"
 	"time"
+
+	_ "embed"
 
 	"fyne.io/systray"
 	"github.com/gen2brain/beeep"
@@ -24,6 +27,11 @@ var (
 var localClient tailscale.LocalClient
 var ctx context.Context
 
+//go:generate sh -c "printf %s $(git rev-parse HEAD) > .VERSION"
+//go:embed .VERSION
+var currentCommit string
+var updateAvailable = false
+
 func main() {
 	localClient = tailscale.LocalClient{}
 
@@ -32,6 +40,7 @@ func main() {
 
 	ctx = context.Background()
 
+	go checkForUpdates()
 	go reloadDaemon()
 	systray.Run(onReady, onSystrayError)
 }
@@ -84,8 +93,20 @@ func onReady() {
 		return
 	}
 
-	statusItem := systray.AddMenuItem(StatusString(status), "Current status of Tailscale")
+	if updateAvailable {
+		updateItem := systray.AddMenuItem("Update Available", "Update Available")
+		setListener(updateItem, func(interface{}) {
+			openUrl("https://github.com/c10udburst/tailscale-systray/")
+		}, nil)
+		systray.AddSeparator()
+	}
+
+	statusItem := systray.AddMenuItem(statusString(status), "Current status of Tailscale")
 	statusItem.Disable()
+
+	sent, recv := calculateTraffic(status)
+	trafficItem := systray.AddMenuItem(fmt.Sprintf("%s received | %s sent | %d link", fmtByte(recv), fmtByte(sent), len(status.Peers())), "Traffic")
+	trafficItem.Disable()
 
 	refresh := systray.AddMenuItem("Refresh", "Refresh this menu")
 	setListener(refresh, func(interface{}) {
@@ -133,7 +154,7 @@ func onReady() {
 
 	adminConsole := systray.AddMenuItem("Admin Console", "Admin Console")
 	setListener(adminConsole, func(interface{}) {
-		OpenUrl(prefs.AdminPageURL())
+		openUrl(prefs.AdminPageURL())
 	}, nil)
 }
 
@@ -148,7 +169,7 @@ func setExitNodes(root *systray.MenuItem, status *ipnstate.Status, prefs *ipn.Pr
 		if !node.ExitNodeOption {
 			continue
 		}
-		name := PeerName(node, status)
+		name := peerName(node, status)
 		item := root.AddSubMenuItemCheckbox(name, name, node.ExitNode)
 		if node.Online {
 			setListener(item, func(data interface{}) {
@@ -246,7 +267,7 @@ func setDeviceList(root *systray.MenuItem, status *ipnstate.Status, prefs *ipn.P
 		if len(device.TailscaleIPs) > 0 {
 			ip = device.TailscaleIPs[0].String()
 		}
-		name := PeerName(device, status)
+		name := peerName(device, status)
 		item := root.AddSubMenuItem(name, name)
 		if !device.Online {
 			item.SetIcon(iconOff)
@@ -255,7 +276,43 @@ func setDeviceList(root *systray.MenuItem, status *ipnstate.Status, prefs *ipn.P
 		}
 		setListener(item, func(ip interface{}) {
 			ip = ip.(string)
-			OpenUrl(fmt.Sprintf("%s/%s", prefs.AdminPageURL(), ip))
+			openUrl(fmt.Sprintf("%s/%s", prefs.AdminPageURL(), ip))
 		}, ip)
 	}
+}
+
+func checkForUpdates() {
+	fmt.Printf("Curr: %s\n", currentCommit)
+
+	var latestCommit string = ""
+	resp, err := http.Get("https://api.github.com/repos/C10udburst/tailscale-systray/tags")
+	if err != nil {
+		return
+	}
+	defer resp.Body.Close()
+
+	var tags []struct {
+		Name   string `json:"name"`
+		Commit struct {
+			SHA string `json:"sha"`
+		} `json:"commit"`
+	}
+	err = json.NewDecoder(resp.Body).Decode(&tags)
+	if err != nil {
+		return
+	}
+
+	for _, tag := range tags {
+		if tag.Name == "latest" {
+			latestCommit = tag.Commit.SHA
+		}
+	}
+
+	if latestCommit == "" {
+		return
+	}
+
+	fmt.Printf("Curr: %s, Latest: %s\n", currentCommit, latestCommit)
+
+	updateAvailable = currentCommit != latestCommit
 }
