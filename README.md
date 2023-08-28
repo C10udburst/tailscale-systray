@@ -52,18 +52,26 @@ Just run the installation command again to update the application.
 
 ### Windows
 
-Remove the application from the `shell:startup` folder.
+In PowerShell, run the following command:
+
+```powershell
+iwr -useb https://raw.githubusercontent.com/C10udburst/tailscale-systray/master/uninstall.txt | iex
+```
 
 ### macOS
+
+In Terminal, run the following command:
+
 ```bash
-rm ~/.local/bin/tailscale-systray
-rm ~/Library/LaunchAgents/com.tailscale.tailscale-systray.plist
+curl -fsSL https://raw.githubusercontent.com/C10udburst/tailscale-systray/master/uninstall.txt | sh
 ```
 
 ### Linux
+
+In Terminal, run the following command:
+
 ```bash
-rm ~/.local/bin/tailscale-systray
-rm ~/.config/autostart/tailscale-systray.desktop
+curl -fsSL https://raw.githubusercontent.com/C10udburst/tailscale-systray/master/uninstall.txt | sh
 ```
 
 <sub>This application is an unofficial project and is not associated with the official Tailscale project. Use it at your own risk, and the developers are not liable for any potential issues or damages caused by the usage of this application.</sub>

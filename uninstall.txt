@@ -1,0 +1,28 @@
+#!/bin/bash
+echo `# <#`
+
+# Bash goes here
+
+os=$(uname -s)
+case $os in
+    Linux*) os=linux ;;
+    Darwin*) os=darwin ;;
+    *) echo "Unknown OS $os"; exit 1 ;;
+esac
+
+if [ $os = "linux" ]; then
+    rm ~/.local/bin/tailscale-systray
+    rm ~/.config/autostart/tailscale-systray.desktop
+elif [ $os = "darwin" ]; then
+    rm ~/.local/bin/tailscale-systray
+    rm ~/Library/LaunchAgents/com.tailscale.tailscale-systray.plist
+fi
+
+exit
+
+#> > $null
+
+# PowerShell goes here
+
+shellStartup = [Environment]::GetFolderPath("Startup")
+Remove-Item "$shellStartup\tailscale-systray.exe"
