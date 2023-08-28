@@ -198,7 +198,7 @@ func setPreferences(root *systray.MenuItem, prefs *ipn.Prefs) {
 		}
 		beeep.Notify("Tailscale", "Updated settings", "")
 		reload()
-	}, "")
+	}, nil)
 
 	acceptRoutes := root.AddSubMenuItemCheckbox("Accept Routes", "Accept Routes", prefs.RouteAll)
 	setListener(acceptRoutes, func(interface{}) {
@@ -213,7 +213,7 @@ func setPreferences(root *systray.MenuItem, prefs *ipn.Prefs) {
 		}
 		beeep.Notify("Tailscale", "Updated settings", "")
 		reload()
-	}, "")
+	}, nil)
 
 	acceptDns := root.AddSubMenuItemCheckbox("Accept DNS", "Accept DNS", prefs.CorpDNS)
 	setListener(acceptDns, func(interface{}) {
@@ -228,7 +228,7 @@ func setPreferences(root *systray.MenuItem, prefs *ipn.Prefs) {
 		}
 		beeep.Notify("Tailscale", "Updated settings", "")
 		reload()
-	}, "")
+	}, nil)
 
 	exitNodeAllowLan := root.AddSubMenuItemCheckbox("Exit Node Allow Lan", "Exit Node Allow Lan", prefs.ExitNodeAllowLANAccess)
 	setListener(exitNodeAllowLan, func(interface{}) {
@@ -243,7 +243,7 @@ func setPreferences(root *systray.MenuItem, prefs *ipn.Prefs) {
 		}
 		beeep.Notify("Tailscale", "Updated settings", "")
 		reload()
-	}, "")
+	}, nil)
 
 	runExitNode := root.AddSubMenuItemCheckbox("Run Exit Node", "Run Exit Node", prefs.AdvertisesExitNode())
 	setListener(runExitNode, func(interface{}) {
@@ -258,7 +258,37 @@ func setPreferences(root *systray.MenuItem, prefs *ipn.Prefs) {
 		}
 		beeep.Notify("Tailscale", "Updated settings", "")
 		reload()
-	}, "")
+	}, nil)
+
+	runSSH := root.AddSubMenuItemCheckbox("Run SSH", "Run SSH", prefs.RunSSH)
+	setListener(runSSH, func(interface{}) {
+		_, err := localClient.EditPrefs(ctx, &ipn.MaskedPrefs{
+			Prefs: ipn.Prefs{
+				RunSSH: !prefs.RunSSH,
+			},
+			RunSSHSet: true,
+		})
+		if err != nil {
+			onError(err)
+		}
+		beeep.Notify("Tailscale", "Updated settings", "")
+		reload()
+	}, nil)
+
+	noSNAT := root.AddSubMenuItemCheckbox("No SNAT", "No SNAT", prefs.NoSNAT)
+	setListener(noSNAT, func(interface{}) {
+		_, err := localClient.EditPrefs(ctx, &ipn.MaskedPrefs{
+			Prefs: ipn.Prefs{
+				NoSNAT: !prefs.NoSNAT,
+			},
+			NoSNATSet: true,
+		})
+		if err != nil {
+			onError(err)
+		}
+		beeep.Notify("Tailscale", "Updated settings", "")
+		reload()
+	}, nil)
 }
 
 func setDeviceList(root *systray.MenuItem, status *ipnstate.Status, prefs *ipn.Prefs) {
