@@ -25,7 +25,7 @@ This is an unofficial cross-platform system tray application written in Golang f
 In PowerShell, run the following command:
 
 ```powershell
-iwr -useb https://raw.githubusercontent.com/C10udburst/tailscale-systray/master/install.txt | iex
+iwr -useb https://raw.githubusercontent.com/C10udburst/tailscale-systray/master/install.txt | Out-String | iex
 ```
 
 ### macOS
@@ -55,7 +55,7 @@ Just run the installation command again to update the application.
 In PowerShell, run the following command:
 
 ```powershell
-iwr -useb https://raw.githubusercontent.com/C10udburst/tailscale-systray/master/uninstall.txt | iex
+iwr -useb https://raw.githubusercontent.com/C10udburst/tailscale-systray/master/uninstall.txt | Out-String | iex
 ```
 
 ### macOS

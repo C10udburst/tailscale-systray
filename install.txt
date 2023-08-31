@@ -79,18 +79,18 @@ exit
 
 # PowerShell goes here
 
-ARCH = $env:PROCESSOR_ARCHITECTURE
+$ARCH = $env:PROCESSOR_ARCHITECTURE
 if ($ARCH -eq "AMD64") {
     $ARCH = "amd64"
-} else if ($ARCH -eq "x86") {
+} elseif ($ARCH -eq "x86") {
     $ARCH = "386"
-} else if ($ARCH -eq "ARM64") {
+} elseif ($ARCH -eq "ARM64") {
     $ARCH = "arm64"
 } else {
     throw "Unknown architecture $ARCH"
 }
 
-uri = "https://github.com/C10udburst/tailscale-systray/releases/download/latest/tailscale-systray-windows-$ARCH.exe"
-shellStartup = [Environment]::GetFolderPath("Startup")
+$uri = "https://github.com/C10udburst/tailscale-systray/releases/download/latest/tailscale-systray-windows-$ARCH.exe"
+$shellStartup = [Environment]::GetFolderPath("Startup")
 Invoke-WebRequest -Uri $uri -OutFile "$shellStartup\tailscale-systray.exe"
 Start-Process "$shellStartup\tailscale-systray.exe"
