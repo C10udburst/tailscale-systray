@@ -55,7 +55,7 @@ Just run the installation command again to update the application.
 In PowerShell, run the following command:
 
 ```powershell
-iwr -useb https://raw.githubusercontent.com/C10udburst/tailscale-systray/master/uninstall.txt | Out-String | iex
+(iwr -useb https://raw.githubusercontent.com/C10udburst/tailscale-systray/master/uninstall.txt).content | iex
 ```
 
 ### macOS

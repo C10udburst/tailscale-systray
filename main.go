@@ -79,7 +79,7 @@ func setListener(item *systray.MenuItem, listener func(interface{}), data interf
 
 func onReady() {
 	systray.SetTitle("Tailscale")
-	systray.SetTooltip("Tailscale")
+	//systray.SetTooltip("Tailscale")
 
 	status, err := localClient.Status(ctx)
 	if err != nil {
@@ -300,9 +300,9 @@ func setDeviceList(root *systray.MenuItem, status *ipnstate.Status, prefs *ipn.P
 		name := peerName(device, status)
 		item := root.AddSubMenuItem(name, name)
 		if !device.Online {
-			item.SetIcon(iconOff)
+			//item.SetIcon(iconOff)
 		} else {
-			item.SetIcon(iconOn)
+			//item.SetIcon(iconOn)
 		}
 		setListener(item, func(ip interface{}) {
 			ip = ip.(string)

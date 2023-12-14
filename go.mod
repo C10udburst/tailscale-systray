@@ -38,5 +38,5 @@ require (
 require (
 	fyne.io/systray v1.10.0
 	github.com/gen2brain/beeep v0.0.0-20230602101333-f384c29b62dd
-	golang.org/x/sys v0.10.0 // indirect
+	golang.org/x/sys v0.15.0 // indirect
 )
